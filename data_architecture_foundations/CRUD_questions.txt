@@ -1,0 +1,41 @@
+-- Question 1: Return a list of employees with Job Titles and Department Names
+SELECT DISTINCT e.emp_nm, e.department_nm, j.job_title 
+FROM Employee AS e
+JOIN JobHistory AS jh
+ON jh.emp_id = e.emp_id
+JOIN Job as j
+ON j.job_id = jh.job_id
+LIMIT 10;
+
+-- Question 2: Insert Web Programmer as a new job title
+Insert into Job(job_title)
+Values ('Web Programmer');
+
+-- Question 3: Correct the job title from web programmer to web developer
+Update Job 
+Set job_title = 'Web Developer'
+Where job_title = 'Web Programmer';
+
+-- Question 4: Delete the job title Web Developer from the database
+Delete from Job
+Where job_title = 'Web Developer';
+
+
+-- Question 5: How many employees are in each department?
+SELECT e.department_nm, COUNT(e.emp_nm)
+FROM employee AS e
+GROUP BY e.department_nm;
+
+
+-- Question 6: Write a query that returns current and past jobs (include employee name, job title, department, manager name, start and end date for position) for employee Toni Lembeck.
+SELECT DISTINCT e.emp_nm, e.manager_nm, e.department_nm, jh.start_dt, jh.end_dt, j.job_title
+FROM Employee AS e
+JOIN JobHistory as jh
+ON e.emp_id = jh.emp_id
+JOIN Job as j
+ON jh.job_id = j.job_id
+WHERE e.emp_nm = 'Toni Lembeck';
+
+
+
+

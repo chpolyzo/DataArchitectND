@@ -1,0 +1,45 @@
+--Create a view that returns all employee attributes; results should resemble initial Excel file
+SELECT DISTINCT e.emp_nm, 
+		e.email, 
+		jh.hire_dt, 
+		j.job_title, 
+		c.salary, 
+		e.department_nm, 
+		e.manager_nm, 
+		jh.start_dt, 
+		jh.end_dt, 
+		l.location, 
+		l.address, 
+		l.city, 
+		l.state, 	
+		e.edu_lv
+FROM Location AS l
+JOIN Employee as e
+ON e.location_id = l.location_id
+JOIN Compensation as c
+ON c.emp_id = e.emp_id
+JOIN JobHistory as jh
+ON jh.emp_id = e.emp_id
+JOIN Job as j
+ON j.job_id = jh.job_id
+LIMIT 10;
+
+-- Create a stored procedure with parameters that returns current and past jobs (include employee name, job title, department, manager name, start and end date for position) when given an employee name.
+SELECT DISTINCT e.emp_nm, e.manager_nm, e.department_nm, jh.start_dt, jh.end_dt, j.job_title
+INTO temporary_table
+FROM Employee AS e
+JOIN JobHistory as jh
+ON e.emp_id = jh.emp_id
+JOIN Job as j
+ON jh.job_id = j.job_id
+WHERE e.emp_nm = 'Toni Lembeck';
+
+
+-- Get Database Name
+CREATE DATABASE current_database
+
+
+-- Implement user security on the restricted salary attribute
+CREATE USER Chrysanthi WITH ENCRYPTED PASSWORD 'password'
+GRANT ALL PRIVILEGES ON DATABASE postgres TO Chrysanthi
+REVOKE privileges ON Compensation FROM Chrysanthi;

@@ -1,0 +1,358 @@
+DROP SCHEMA IF EXISTS two_sided CASCADE;
+
+-- create a schema for a two sided platform business model
+CREATE SCHEMA IF NOT EXISTS two_sided;
+
+-- create seller_account table in the two_sided schema
+DROP TABLE IF EXISTS  two_sided.seller_account CASCADE;
+
+CREATE TABLE IF NOT EXISTS two_sided.seller_account
+(
+seller_id integer PRIMARY KEY,
+first_name varchar(50),
+last_name varchar(50),
+email varchar(50),
+adress varchar(50),
+zipcode varchar(10)
+);
+
+-- insert into seller_id records from im.items that seems to be more complete
+-- SELECT COUNT(DISTINCT sellerid) FROM im.items;
+-- 266
+-- SELECT COUNT(DISTINCT sellerid) FROM li.listings;
+-- 218
+
+INSERT INTO two_sided.seller_account(seller_id)
+SELECT DISTINCT it.sellerid
+FROM im.items it;
+
+
+-- populate seller_account table from li.listings
+UPDATE two_sided.seller_account sa
+SET first_name = us.firstname,
+	last_name = us.lastname,
+	email = us.email,
+	adress = us.address,
+	zipcode = us.zipcode
+FROM usr.users us
+FULL OUTER JOIN li.listings li
+ON us.userid = li.sellerid
+WHERE sa.seller_id = us.userid;
+
+
+-- create buyer_account table in the two_sided schema
+DROP TABLE IF EXISTS  two_sided.buyer_account CASCADE;
+
+CREATE TABLE IF NOT EXISTS two_sided.buyer_account
+(
+buyer_id integer PRIMARY KEY,
+first_name varchar(50),
+last_name varchar(50),
+email varchar(50),
+adress varchar(50),
+zipcode varchar(10)
+);
+
+
+-- insert into buyer_id records from usr.users
+INSERT INTO two_sided.buyer_account(buyer_id)
+SELECT DISTINCT ops.buyerid
+FROM op.orders ops;
+
+
+-- populate buyer_account table from op.listings
+UPDATE two_sided.buyer_account ba
+SET first_name = us.firstname,
+	last_name = us.lastname,
+	email = us.email,
+	adress = us.address,
+	zipcode = us.zipcode
+FROM usr.users us
+JOIN op.orders ops
+ON us.userid = ops.buyerid
+WHERE ba.buyer_id = us.userid;
+
+-- create credit_card table
+DROP TABLE IF EXISTS  two_sided.payments CASCADE;
+
+CREATE TABLE IF NOT EXISTS two_sided.payments
+(
+pay_id serial PRIMARY KEY,
+creditcardid integer,
+card_number varchar(50),
+exp_date date,
+seller_id integer,
+buyer_id integer,
+user_id integer,
+IBAN varchar(34)
+);
+
+-- insert into credit_card records from usr.creditcards
+INSERT INTO two_sided.payments(creditcardid, card_number, exp_date, seller_id, buyer_id, user_id)
+SELECT DISTINCT cd.creditcardid, cd.creditcardnumber, cd.creditcardexpirationdate, it.sellerid, op.buyerid, us.userid
+FROM usr.creditcards cd
+JOIN usr.users us
+ON us.userid = cd.userid
+JOIN li.listings li 
+ON us.userid = li.sellerid
+JOIN op.orders op
+ON us.userid = op.buyerid
+JOIN im.items it
+ON it.sellerid = us.userid;
+
+ALTER TABLE two_sided.payments
+ADD CONSTRAINT pay_seller_fkey
+FOREIGN KEY (seller_id)
+REFERENCES two_sided.seller_account (seller_id); 
+
+ALTER TABLE two_sided.payments
+ADD CONSTRAINT pay_buyer_fkey
+FOREIGN KEY (buyer_id)
+REFERENCES two_sided.buyer_account (buyer_id); 
+
+-- create contact table in the two_sided schema
+DROP TABLE IF EXISTS two_sided.contact;
+
+CREATE TABLE IF NOT EXISTS two_sided.contact
+(
+contact_id serial PRIMARY KEY,
+customerservicerequests_id integer,
+buyer_id integer,
+seller_id integer,
+contact_reason varchar(50),
+contact_method varchar(50),
+resolution varchar(50),
+contact_date date
+);
+
+-- insert into contact records from cs.customerservicerequests
+INSERT INTO two_sided.contact(customerservicerequests_id, buyer_id, seller_id, contact_reason, contact_method, resolution)
+SELECT DISTINCT cs.id, op.buyerid, it.sellerid, cs.contactreason, cs.contactmethod, cs.resolution
+FROM cs.customerservicerequests cs
+JOIN usr.users us
+ON cs.userid = us.userid
+JOIN op.orders op
+ON us.userid = op.buyerid
+JOIN li.listings li 
+ON us.userid = li.sellerid
+JOIN im.items it
+ON us.userid = it.sellerid;
+
+-- now we have a table with all possible buyer_id and seller_id indipendent of having called or not customer service
+-- Let's update the table to keep only important information
+DELETE
+FROM two_sided.contact 
+WHERE customerservicerequests_id IS NULL; 
+
+-- add buyer_id referencing buyer_account table
+ALTER TABLE two_sided.contact
+ADD CONSTRAINT contact_buyer_fkey 
+FOREIGN KEY (buyer_id) 
+REFERENCES two_sided.buyer_account (buyer_id);
+
+-- add buyer_id referencing seller_account table
+ALTER TABLE two_sided.contact
+ADD CONSTRAINT contact_seller_fkey 
+FOREIGN KEY (seller_id) 
+REFERENCES two_sided.seller_account (seller_id);
+
+-- create invoice table
+DROP TABLE IF EXISTS  two_sided.invoice CASCADE;
+
+CREATE TABLE IF NOT EXISTS two_sided.invoice
+(
+invoice_id serial PRIMARY KEY,
+shipping_cost numeric (5,2),
+final_price numeric (8,2),
+tax_rate smallint,
+buyer_id integer
+);
+
+INSERT INTO two_sided.invoice(shipping_cost, final_price, tax_rate, buyer_id)
+SELECT DISTINCT op.shippingcost, ot.listingsoldprice, op.taxratepercent, op.buyerid
+FROM op.orders op
+RIGHT JOIN op.orderitems ot
+ON ot.orderid = op.orderid;
+
+-- add buyer_id foreign key referencing buyer_account table
+ALTER TABLE two_sided.invoice
+ADD CONSTRAINT buyer_invoice_fkey 
+FOREIGN KEY (buyer_id) 
+REFERENCES two_sided.buyer_account (buyer_id);
+
+-- create shipments table
+DROP TABLE IF EXISTS  two_sided.shipments CASCADE;
+
+CREATE TABLE IF NOT EXISTS two_sided.shipments
+(
+shipment_id integer PRIMARY KEY,
+carrier varchar(50),
+track_num varchar(30)
+);
+
+INSERT INTO two_sided.shipments(shipment_id, carrier, track_num)
+SELECT DISTINCT os.shipmentid, os.carrier, os.trackingnumber
+FROM op.ordershipments os;
+
+-- create listings table in the two_sided schema
+DROP TABLE IF EXISTS  two_sided.listings CASCADE;
+
+CREATE TABLE IF NOT EXISTS two_sided.listings
+(
+listing_id integer PRIMARY KEY,
+listingtype varchar(20),
+listingprice numeric(8,2),
+item_id integer
+);
+
+-- insert into two_sided.listings records from li.listings and two_sided.item
+INSERT INTO two_sided.listings(listing_id, listingprice, listingtype)
+SELECT DISTINCT li.listingid, li.listingprice, li.listingtype
+FROM li.listings li;
+
+UPDATE two_sided.listings ls
+SET item_id = im.itemid
+FROM im.items im
+FULL OUTER JOIN li.listings li
+ON im.sellerid = li.sellerid
+WHERE ls.listing_id = li.listingid;
+
+-- create events table in the two_sided schema
+DROP TABLE IF EXISTS  two_sided.events CASCADE;
+
+CREATE TABLE IF NOT EXISTS two_sided.events
+(
+item_id integer,
+listing_id integer,
+order_id integer,
+invoice_id integer,
+shipment_id integer,
+arrival_dt date,
+listing_start date,
+listing_end date,
+order_dt date,
+invoice_dt date,
+shipped_dt date
+);
+
+-- insert into events table from different tables
+INSERT INTO  two_sided.events(item_id, order_id, listing_id, shipment_id, arrival_dt, listing_start, listing_end, order_dt, shipped_dt)
+SELECT DISTINCT it.itemid, op.orderid, ol.listingid, os.shipmentid, it.arrivaldate, ol.listingcreatedate, ol.listingenddate, op.orderdate, os.ordershipdate
+FROM usr.users us
+FULL OUTER JOIN im.items it
+ON us.userid = it.sellerid
+FULL OUTER JOIN op.orders op
+ON us.userid = op.buyerid
+FULL OUTER JOIN li.listings ol
+ON us.userid = ol.sellerid
+FULL OUTER JOIN op.orderitems ot
+ON op.orderid = ot.orderid
+FULL OUTER JOIN op.ordershipments os
+ON op.orderid = os.orderid;
+
+DELETE FROM two_sided.events
+WHERE item_id IS NULL;
+
+-- add invoice_id foreign key referencing contact table
+ALTER TABLE two_sided.events
+ADD CONSTRAINT invoice_events_fkey 
+FOREIGN KEY (invoice_id) 
+REFERENCES two_sided.invoice (invoice_id);
+
+-- add shipment_id foreign key referencing contact table
+ALTER TABLE two_sided.events
+ADD CONSTRAINT shipment_events_fkey 
+FOREIGN KEY (shipment_id) 
+REFERENCES two_sided.shipments (shipment_id);
+
+
+-- create item table in the two_sided schema
+DROP TABLE IF EXISTS  two_sided.item CASCADE;
+
+CREATE TABLE IF NOT EXISTS two_sided.item
+(
+item_id integer NOT NULL,
+seller_id integer,
+item_name varchar(50),
+type varchar(50),
+brand_name varchar(100),
+color varchar(15),
+gender varchar(10),
+size varchar(4),
+condition varchar(50),
+itemstatus varchar (50)
+);
+
+-- insert into two_sided.item records from im.items that seems to be more complete
+
+INSERT INTO two_sided.item(item_id, seller_id, item_name, type, brand_name, color, size, gender, condition, itemstatus)
+SELECT DISTINCT it.itemid, it.sellerid, it.itemname, it.type, it.brandname, it.color, it.size, it.sex, it.condition, it.itemstatus
+FROM im.items it;
+
+-- add primary and foreign keys to two_sided.item table
+ALTER TABLE two_sided.item
+ADD PRIMARY KEY (item_id);
+
+-- add shipment_id foreign key referencing contact table
+ALTER TABLE two_sided.item
+ADD CONSTRAINT item_seller_fkey 
+FOREIGN KEY (seller_id) 
+REFERENCES two_sided.seller_account (seller_id);
+
+-- add item_id foreign key in events table referencing two_sided.item table
+ALTER TABLE two_sided.events
+ADD CONSTRAINT item_event_fkey 
+FOREIGN KEY (item_id) 
+REFERENCES two_sided.item (item_id);
+
+
+-- add shipment_id foreign key referencing contact table
+ALTER TABLE two_sided.listings
+ADD CONSTRAINT listings_item_fkey 
+FOREIGN KEY (item_id) 
+REFERENCES two_sided.item (item_id);
+
+-- create orders table in the two_sided schema
+DROP TABLE IF EXISTS  two_sided.orders CASCADE;
+
+CREATE TABLE IF NOT EXISTS two_sided.orders
+(
+order_id integer PRIMARY KEY,
+order_status varchar(50),
+total_amount numeric(8,2)
+);
+
+-- insert into two_sided.orders records from op.orders 
+INSERT INTO two_sided.orders(order_id, order_status, total_amount)
+SELECT DISTINCT op.orderid, op.status, op.totalamount
+FROM op.orders op;
+
+-- add foreign key events referencing orders table
+ALTER TABLE two_sided.events
+ADD CONSTRAINT orders_events_fkey 
+FOREIGN KEY (order_id) 
+REFERENCES two_sided.orders (order_id);
+
+-- add foreign key events referencing listings table
+ALTER TABLE two_sided.events
+ADD CONSTRAINT listings_events_fkey 
+FOREIGN KEY (listing_id) 
+REFERENCES two_sided.listings (listing_id);
+
+-- add order_id column to contact table to create one (order) to many  relationship
+ALTER TABLE two_sided.contact
+ADD COLUMN order_id integer;
+
+-- fill two_sided.contacts.order_id column
+UPDATE two_sided.contact ct
+SET order_id = cs.orderid
+FROM cs.customerservicerequests cs
+WHERE cs.id = ct.customerservicerequests_id;
+
+
+-- create foreign key for order_id column
+ALTER TABLE two_sided.contact
+ADD CONSTRAINT orders_contact_fkey 
+FOREIGN KEY (order_id) 
+REFERENCES two_sided.orders (order_id);
+ 

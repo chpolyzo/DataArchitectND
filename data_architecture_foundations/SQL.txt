@@ -1,0 +1,80 @@
+-- create location table
+CREATE TABLE Location(
+    location_id serial primary key,
+    location varchar(50),
+    address varchar(50),
+    state varchar(2),
+    city varchar(50));
+
+-- create Employee table
+CREATE TABLE Employee(
+    emp_id serial primary key,
+    emp_nm varchar(50),
+    manager_nm varchar(50),
+    email varchar(50),
+    edu_lv varchar(50),
+    department_nm varchar(50),
+    manager_id int references Employee(emp_id),
+    location_id int references Location(location_id));
+    
+
+-- fill Location table 
+INSERT INTO Location(location, address, state, city)
+SELECT DISTINCT s.location, s.address, s.state, s.city
+FROM proj_stg AS s;
+
+-- fill Employee table
+INSERT INTO Employee(emp_nm, manager_nm, email, edu_lv, department_nm, location_id)
+SELECT DISTINCT s.emp_nm, s.manager, s.email, s.education_lvl, s.department_nm, l.location_id
+FROM proj_stg AS s
+JOIN Location as l
+ON l.location = s.location;
+-- update manager key
+UPDATE Employee
+SET manager_id = emp_id
+WHERE manager_nm = 'Conner Kinch' 
+OR manager_nm = 'Allison Gentle' 
+OR manager_nm = 'Jennifer De La Garza' 
+OR manager_nm = 'Jacob Lauber'
+OR manager_nm = 'Tyrone Hutchison';
+
+-- create compensation table
+CREATE TABLE Compensation(
+    cmps_id serial primary key,
+    salary int,
+    bonus int,
+    emp_id int references Employee(emp_id)); 
+
+-- load data into Compensation table
+INSERT INTO Compensation(salary, emp_id)
+SELECT DISTINCT s.salary, e.emp_id 
+FROM proj_stg as s
+JOIN employee as e
+ON e.emp_nm = s.emp_nm;
+
+-- create Job table
+CREATE TABLE Job(
+    job_id serial primary key,
+    job_title varchar(50));    
+    
+-- fill Job table
+INSERT INTO Job(job_title)
+SELECT DISTINCT job_title FROM proj_stg;
+
+-- create jobhistory table
+CREATE TABLE JobHistory(
+    jobhistory_id serial primary key,
+    hire_dt date,
+    start_dt date,
+    end_dt date,
+    emp_id int references Employee(emp_id),
+    job_id int references Job(job_id));
+
+-- fill jobhistory table
+INSERT INTO JobHistory(emp_id, hire_dt, start_dt, end_dt, job_id)
+SELECT DISTINCT e.emp_id, s.hire_dt, s.start_dt, s.end_dt, j.job_id
+FROM proj_stg AS s
+JOIN Employee AS e
+ON e.emp_nm = s.emp_nm
+JOIN Job as j
+ON j.job_title = s.job_title;
