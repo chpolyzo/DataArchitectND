@@ -4,9 +4,9 @@ This is a repository keeping all projects for the data architect Nanodegree at U
 In this program, we plan, design and implement enterprise data infrastructure solutions and create the blueprints for an organization’s data management system. 
 
 In this program we:
-### 1. create a relational database with PostGreSQL
+### 1. Create a relational database with PostGreSQL
 Learn about the principles of data architecture. You will begin by learning the characteristics of good data architecture and how to apply them. Next you will move on to data modeling. You will learn to design a data model, normalize data, and create a professional ERD. Finally, you will take everything you learned and create a physical database using PostGreSQL.
-### 2. design an Online Analytical Processing (OLAP) data model to build a cloud based data warehouse
+### 2. Design an Online Analytical Processing (OLAP) data model to build a cloud based data warehouse
 Learn to design enterprise data architecture. You will build a cloud based data warehouse with Snowflake. You will evaluate various data assets of an organization and characteristics of these data sources, design a staging area for ingesting varieties of data coming from source systems, and design an Operational Data Store (ODS). Finally, you will learn to design OLAP dimensional data models, design ELT data processing that is capable of moving data from an ODS to a data warehouse, and write SQL queries for the purpose of building reports.
 ### 3. Design scalable data lake architecture that meets the needs of Big Data
 Learn about how to help organizations with massive amounts of data, including identification of Big Data problems and how to design Big Data solutions. You will learn about the internal architecture of many of the Big Data tools such as HDFS, MapReduce, Hive and Spark, and how these tools work internally to provide distributed storage, distributed processing capabilities, fault tolerance and scalability. Next you will learn how to evaluate NoSQL databases, their use cases and dive deep into creating and updating a NOSQL database with Amazon DynamoDB. Finally, you will learn how to implement Data Lake design patterns and how to enable transactional capabilities in a Data Lake.
