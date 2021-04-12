@@ -1,5 +1,5 @@
 # Data-Architect
-This is a repository containing all projects for the data architect Nanodegree at Udacity https://www.udacity.com/course/data-architect-nanodegree--nd038
+This is a repository keeping all projects for the data architect Nanodegree at Udacity https://www.udacity.com/course/data-architect-nanodegree--nd038
 
 In this program, we plan, design and implement enterprise data infrastructure solutions and create the blueprints for an organization’s data management system. 
 
